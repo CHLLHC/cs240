@@ -123,7 +123,8 @@ CS240NotFabrication::ConfigureChannels ()
   CH80211p.SetRemoteStationManager ("ns3::ConstantRateWifiManager", "DataMode",
 				    StringValue ("OfdmRate3MbpsBW10MHz"),
 				    "ControlMode",
-				    StringValue ("OfdmRate3MbpsBW10MHz"));
+				    StringValue ("OfdmRate3MbpsBW10MHz"),
+				    "RtsCtsThreshold", UintegerValue (0));
 
   // Set Tx Power For The SCH
   ChPhy.Set ("TxPowerStart", DoubleValue (m_txp));
