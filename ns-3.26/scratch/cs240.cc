@@ -120,6 +120,7 @@
 #include "ns3/integer.h"
 #include "ns3/wave-bsm-helper.h"
 #include "ns3/wave-helper.h"
+#include "ns3/vanetmobility-helper.h"
 // future #include "ns3/topology.h"
 
 using namespace ns3;
@@ -2140,8 +2141,8 @@ VanetRoutingExperiment::SetupAdhocMobilityNodes ()
 
       ObjectFactory pos;
       pos.SetTypeId ("ns3::RandomBoxPositionAllocator");
-      pos.Set ("X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=1500.0]"));
-      pos.Set ("Y", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=300.0]"));
+      pos.Set ("X", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=2000.0]"));
+      pos.Set ("Y", StringValue ("ns3::UniformRandomVariable[Min=0.0|Max=2000.0]"));
       // we need antenna height uniform [1.0 .. 2.0] for loss model
       pos.Set ("Z", StringValue ("ns3::UniformRandomVariable[Min=1.0|Max=2.0]"));
 

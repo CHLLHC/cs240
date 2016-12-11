@@ -10,7 +10,7 @@
 #include "simi240.h"
 
 CS240DataBasket::CS240DataBasket () :
-    m_TxBytes (0), m_TxPackets (0)
+    m_RxBytes (0), m_Ob (0), m_RxPackets (0), m_Op (0)
 {
 
 }
@@ -26,10 +26,11 @@ void
 CS240NotFabrication::Simulate (int argc, char **argv)
 {
   ParseCommandLineArguments (argc, argv);
-  ConfigureMobility ();
+  LoadTraffic ();
   ConfigureNodes ();
   ConfigureChannels ();
   ConfigureDevices ();
+  ConfigureMobility ();
   ConfigureApplications ();
   RunSimulation ();
   ProcessOutputs ();
@@ -175,21 +176,121 @@ CS240NotFabrication::ConfigureMobility ()
 void
 CS240NotFabrication::ConfigureApplications ()
 {
+  InternetStackHelper internet;
+  OlsrHelper olsr;
+  AodvHelper aodv;
+  DsdvHelper dsdv;
+  DsrHelper dsr;
+  DsrMainHelper dsrMain;
+
+  switch (m_routing)
+    {
+    case AODV:
+      internet.SetRoutingHelper (aodv);
+      internet.Install (m_TxNodes);
+      break;
+    case OLSR:
+      internet.SetRoutingHelper (olsr);
+      internet.Install (m_TxNodes);
+      break;
+    case DSDV:
+      internet.SetRoutingHelper (dsdv);
+      internet.Install (m_TxNodes);
+      break;
+    case DSR:
+      internet.Install (m_TxNodes);
+      dsrMain.Install (dsr, m_TxNodes);
+      break;
+    default:
+      break;
+    }
+
+  Ipv4AddressHelper ipv4;
+  ipv4.SetBase ("10.1.0.0", "255.255.0.0"); //SCH
+  m_TxInterface = ipv4.Assign (m_TxDevices);
+
+  // Setup routing transmissions
+  OnOffHelper onoff1 ("ns3::UdpSocketFactory", Address ());
+  onoff1.SetAttribute (
+      "OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"));
+  onoff1.SetAttribute (
+      "OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0.0]"));
+
+  Ptr<UniformRandomVariable> var = CreateObject<UniformRandomVariable> ();
+  int64_t stream = 2;
+  var->SetStream (stream);
+  //mesh
+  for (int i = 0; i < m_nodes; i++)
+    for (int j = 0; j < m_nodes; ++j)
+      if (i != j)
+	{
+	  TypeId tid = TypeId::LookupByName ("ns3::UdpSocketFactory");
+	  Ipv4Address AddressJ = m_TxInterface.GetAddress (j);
+	  Ptr<Node> NodeJ = m_TxNodes.Get (j);
+	  Ptr<Socket> sink = Socket::CreateSocket (NodeJ, tid);
+	  InetSocketAddress local = InetSocketAddress (AddressJ, m_port);
+	  sink->Bind (local);
+	  sink->SetRecvCallback (
+	      MakeCallback (&CS240NotFabrication::ReceivePacket, this));
+
+	  AddressValue remoteAddress (InetSocketAddress (AddressJ, m_port));
+	  onoff1.SetAttribute ("Remote", remoteAddress);
+
+	  ApplicationContainer temp = onoff1.Install (m_TxNodes.Get (i));
+	  temp.Start (Seconds (var->GetValue (1.0, 2.0)));
+	  temp.Stop (Seconds (m_duration));
+	}
+
+}
+
+void
+CS240NotFabrication::ReceivePacket (Ptr<Socket> socket)
+{
+  Ptr<Packet> packet;
+  Address srcAddress;
+  while ((packet = socket->RecvFrom (srcAddress)))
+    {
+      m_data.m_RxBytes += packet->GetSize ();
+      m_data.m_RxPackets++;
+      //cout << m_data.m_RxPackets << endl;
+    }
 }
 
 void
 CS240NotFabrication::RunSimulation ()
 {
-
+  Simulator::Schedule (Seconds (0.0), &CS240NotFabrication::Tick, this);
+  Simulator::Stop (Seconds (m_duration));
+  Simulator::Run ();
+  Simulator::Destroy ();
 }
 
 void
 CS240NotFabrication::ProcessOutputs ()
 {
+  cout << "Total bytes received: ";
+  cout << m_data.m_RxBytes;
+  cout << endl;
+  cout << "Total packets received: ";
+  cout << m_data.m_RxPackets;
+  cout << endl;
+}
+
+void
+CS240NotFabrication::Tick ()
+{
+  cout << "Now:" << Simulator::Now ().GetSeconds () << " Rx: "
+      << m_data.m_RxPackets << "Pkts, " << m_data.m_RxBytes << "B" << " (+"
+      << m_data.m_RxPackets - m_data.m_Op << ",+"
+      << m_data.m_RxBytes - m_data.m_Ob << ")" << endl;
+  m_data.m_Ob = m_data.m_RxBytes;
+  m_data.m_Op = m_data.m_RxPackets;
+  Simulator::Schedule (Seconds (1.0), &CS240NotFabrication::Tick, this);
 }
 
 int
-main ()
+main (int argc, char *argv[])
 {
-
+  CS240NotFabrication CHL;
+  CHL.Simulate (argc, argv);
 }

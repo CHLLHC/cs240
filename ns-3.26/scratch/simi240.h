@@ -33,6 +33,14 @@
 using namespace ns3;
 using namespace std;
 
+class CS240DataBasket
+{
+public:
+  CS240DataBasket ();
+  uint64_t m_RxBytes, m_Ob;
+  uint64_t m_RxPackets, m_Op;
+};
+
 class CS240NotFabrication
 {
 public:
@@ -60,6 +68,11 @@ private:
   void
   ProcessOutputs ();
 
+  void
+  ReceivePacket (Ptr<Socket> socket);
+  void
+  Tick ();
+
   int m_port, m_nodes, m_streamIndex;
   double m_txp, m_duration;
   enum RType
@@ -69,17 +82,11 @@ private:
   string m_input;
   NodeContainer m_TxNodes;
   NetDeviceContainer m_TxDevices;
+  Ipv4InterfaceContainer m_TxInterface;
   ofstream m_os;
   Ptr<ns3::vanetmobility::VANETmobility> m_vanetMo;
+  CS240DataBasket m_data;
 
-};
-
-class CS240DataBasket
-{
-public:
-  CS240DataBasket ();
-  uint128_t m_TxBytes;
-  uint128_t m_TxPackets;
 };
 
 #endif /* SCRATCH_SIMI240_H_ */
